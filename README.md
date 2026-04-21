@@ -25,7 +25,7 @@ The result is a more balanced system that can detect both direct copying and sem
 
 ## 🔥 System Pipeline
 
-![Pipeline](assets/pipeline.png)
+![Pipeline](Assets/pipeline.png)
 
 ---
 
@@ -179,19 +179,19 @@ Models evaluated:
 
 ### Model Comparison
 
-![Model Comparison](assets/model_comparison.png)
+![Model Comparison](Assets/model_comparison.png)
 
 ### Precision-Recall
 
-![Precision Recall](assets/precision_recall.png)
+![Precision Recall](Assets/precision_recall.png)
 
 ### Threshold Comparison
 
-![Threshold](assets/threshold_comparison.png)
+![Threshold](Assets/threshold_comparison.png)
 
 ### Confusion Matrix
 
-![Confusion](assets/hybrid_confusion_matrix.png)
+![Confusion](Assets/hybrid_confusion_matrix.png)
 
 ---
 
