@@ -310,6 +310,12 @@ This project demonstrates:
 
 ---
 
+## 📜 License
+
+This project is licensed under the Apache 2.0 License.
+
+---
+
 ## Author Note
 
 This project evolved from a basic prototype into a strong hybrid system by improving:
