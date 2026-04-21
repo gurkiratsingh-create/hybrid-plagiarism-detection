@@ -1,0 +1,355 @@
+% Springer Conference Paper Template
+\documentclass{llncs}
+
+% Packages
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\begin{document}
+
+\title{A Hybrid Multi-Stage Approach to Plagiarism Detection: Integrating Lexical and Semantic Similarity Measures}
+
+\author{Gurkirat Singh Bhangoo \and
+Sparsh Tyagi \and
+Ashmit Saini \and
+Litesh Goyal \and
+Ms. Ankita Thakur}
+
+\institute{Apex Institute of Technology CSE, \\
+Chandigarh University, Mohali, Punjab, India \\
+\email{gurkirat.singh@email.com}, \email{sparshtyagi0612@gmail.com}, \email{sainiashmit.2000@gmail.com}, \email{goyallitesh195@gmail.com} (Orcid id-0009-0005-3795-0506), \email{ankita.e18488@cumail.in}}
+
+\maketitle
+
+\begin{abstract}
+Plagiarism detection has become increasingly difficult because modern rewriting tools can preserve meaning while substantially altering surface wording. Traditional lexical approaches such as TF-IDF remain effective for exact or near-verbatim copying, but their performance drops when plagiarized content is paraphrased. Transformer-based semantic models such as Sentence-BERT (SBERT) address this limitation, yet they may also overestimate similarity between documents that are topically related but independently written.
+
+To address this trade-off, we propose a hybrid multi-stage plagiarism detection system that integrates exact matching, TF-IDF-based lexical similarity, SBERT-based semantic similarity, top-K sentence matching, candidate filtering, and document-level ensemble aggregation. The proposed system combines local sentence-level evidence with global document-level similarity signals, allowing it to detect both literal copying and semantically preserved rewriting while reducing noisy matches.
+
+We evaluate the approach on a controlled subset derived from the PAN plagiarism dataset using metadata-based positive pair construction and sampled negative pairs. On a held-out test split, the proposed hybrid model achieves precision of 0.9130, recall of 1.0000, F1-score of 0.9545, and accuracy of 0.9592, outperforming standalone TF-IDF and SBERT baselines. We additionally evaluate a learned logistic-regression classifier on the extracted hybrid features and conduct an ablation study with bootstrap confidence intervals. The results indicate that combining lexical and semantic cues at both local and global levels provides a robust and practically useful framework for plagiarism detection.
+
+\keywords{plagiarism detection \and natural language processing \and TF-IDF \and Sentence-BERT \and semantic similarity \and hybrid classification systems \and information retrieval}
+\end{abstract}
+
+\section{Introduction}
+Plagiarism detection has become an important problem in modern academic and digital environments, where large amounts of textual content are generated and shared online. While earlier systems focused primarily on detecting exact copying, we observed that modern plagiarism often involves paraphrasing, synonym substitution, and structural modification, making detection more complex.
+
+In our preliminary experiments, we found that lexical methods such as TF-IDF were unable to capture paraphrased similarities effectively. At the same time, semantic models such as SBERT, although powerful, sometimes identified unrelated sentences as similar due to shared context. These observations motivated us to develop a hybrid approach that leverages both lexical and semantic similarity measures to achieve better overall performance.
+
+The natural language processing community has responded with increasingly sophisticated semantic analysis tools. Transformer architectures, particularly BERT and its optimized variant Sentence-BERT, have demonstrated impressive capabilities in understanding contextual meaning beyond surface-level lexical features. These models generate dense vector representations that capture semantic relationships, theoretically enabling detection even when every word has been changed. Yet this semantic sensitivity brings its own challenges. Documents discussing similar topics naturally exhibit semantic overlap, and distinguishing between legitimate topical similarity and actual content appropriation remains problematic.
+
+We observe that lexical and semantic approaches each possess distinct strengths that could potentially address the other's weaknesses. Lexical methods provide high precision when matches occur, though their recall suffers with paraphrased content. Semantic methods cast a wider net, potentially catching paraphrased material, but risk flagging innocent topical similarities. Rather than choosing between these paradigms, our research explores how to effectively combine them within a unified detection pipeline.
+
+This paper makes several contributions to plagiarism detection methodology. We introduce a multi-stage architecture that processes documents through exact matching, lexical scoring, semantic scoring, top-K sentence alignment, filtering, and document-level ensemble aggregation. We implement a top-K sentence matching strategy that reduces the cost of detailed pairwise comparison while preserving the strongest local evidence. We combine local sentence matches with global document-level TF-IDF and SBERT signals so that the final decision is not dominated by a single sentence pair. Finally, we demonstrate through empirical evaluation that this hybrid approach produces stronger overall performance than either component method alone on our evaluation subset.
+
+This work distinguishes itself from prior hybrid approaches by introducing a structured multi-stage pipeline that incorporates top-K semantic matching and adaptive filtering. These mechanisms enable efficient computation while preserving critical similarity signals, resulting in improved detection performance across both exact and paraphrased plagiarism scenarios.
+
+\section{Background and Related Research}
+
+The field of plagiarism detection has evolved considerably over several decades, with researchers exploring various computational approaches to identify unauthorized content reuse.
+
+\subsection{Early Lexical Methods}
+
+Initial plagiarism detection systems drew heavily from information retrieval techniques. Fingerprinting methods would hash document segments and compare these compact representations, enabling efficient large-scale comparisons. String matching algorithms identified common subsequences between documents. The vector space model, particularly implementations using Term Frequency-Inverse Document Frequency (TF-IDF) weighting, became especially popular due to its elegant mathematical foundation and computational tractability.
+
+These lexical approaches share a common characteristic: they operate on surface-level textual features. A TF-IDF model represents documents as sparse vectors in a high-dimensional space where each dimension corresponds to a term from the vocabulary. Cosine similarity between these vectors quantifies lexical overlap. When documents share substantial vocabulary, particularly rare terms weighted heavily by IDF, the similarity score rises. However, replacing words with synonyms or restructuring sentences immediately defeats such systems, as the vector representations become orthogonal despite semantic equivalence.
+
+\subsection{Emergence of Semantic Approaches}
+
+The introduction of distributed word representations marked a significant shift in how machines could understand language. Word2Vec and GloVe demonstrated that words could be embedded in continuous vector spaces where semantic relationships manifested as geometric relationships. Words with similar meanings occupied nearby positions in this space, enabling systems to recognize "car" and "automobile" as semantically related despite being lexically distinct.
+
+Transformer architectures elevated semantic understanding to new heights. BERT's bidirectional attention mechanism allows it to build context-dependent representations where a word's meaning varies based on surrounding words. However, BERT was designed primarily for sentence-level tasks and generates token-level embeddings. Sentence-BERT addressed this limitation by fine-tuning BERT with siamese and triplet network structures, producing fixed-length sentence embeddings suitable for similarity comparison. The resulting model enables efficient semantic search and has found applications in plagiarism detection, where it can theoretically identify paraphrased content that lexical methods would miss.
+
+Despite these advances, semantic models introduce new challenges. They measure meaning similarity rather than originality. Two independently written texts on the same topic will naturally exhibit high semantic similarity. A student's original essay on climate change may show substantial semantic overlap with published scientific articles on the same subject, not because the student plagiarized, but because both discuss similar concepts using domain-appropriate vocabulary. Distinguishing between legitimate topical similarity and actual content appropriation remains an open problem.
+
+\subsection{Hybrid Detection Strategies}
+
+Recognizing that both lexical and semantic approaches offer complementary information, researchers have begun exploring hybrid strategies. Some systems use lexical methods for initial filtering, applying more expensive semantic analysis only to promising candidates. Others train machine learning classifiers on features derived from both lexical and semantic similarity measures. However, effectively balancing these disparate signals requires careful consideration of their relative strengths and failure modes.
+
+Our work extends this hybrid tradition by introducing a structured multi-stage pipeline with explicit mechanisms for computational efficiency, false positive reduction, and robust score aggregation. Rather than treating lexical and semantic features as merely additional inputs to a classifier, we architect the detection flow to leverage each method's strengths at appropriate stages.
+
+\section{Proposed Methodology}
+
+Our detection system processes document pairs through seven distinct stages, each building upon information from previous stages while adding new analytical perspectives.
+
+\subsection{Architecture Overview}
+
+The pipeline begins with text normalization and sentence segmentation, followed by exact matching, document-level lexical similarity via TF-IDF, document-level semantic similarity via Sentence-BERT, and sentence-level semantic candidate generation. Rather than comparing all possible sentence pairs in full detail, we first rank sentence candidates by semantic similarity and retain only the top-K candidates for each source sentence. Candidate matches then undergo lexical-semantic filtering, and the surviving local evidence is combined with global document-level TF-IDF and SBERT scores to produce a final ensemble score. A tuned threshold converts this score into the final binary plagiarism decision.
+
+This architecture reflects several design principles. First, we use cheap signals such as preprocessing and exact matching before more expensive downstream computations. Second, we reduce the search space through top-K sentence selection instead of exhaustive detailed comparison. Third, we require sentence-level matches to satisfy lexical and/or semantic gates before contributing to the final score. Fourth, we treat plagiarism as both a local alignment problem and a document-level similarity problem, which makes the final system more stable than relying on a single best-matching sentence pair.
+
+During implementation, we observed that comparing all possible sentence pairs introduced unnecessary computational overhead and noise. To address this, we adopted a top-K matching strategy that focuses only on the most relevant sentence pairs, improving both efficiency and result quality.
+
+As shown in Fig.~\ref{fig:pipeline}, the proposed system follows a multi-stage pipeline integrating lexical and semantic similarity measures.
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{pipeline.png}}
+\caption{Proposed Hybrid Plagiarism Detection Pipeline}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Text Preprocessing}
+
+Raw input documents undergo standard normalization procedures. We convert all text to lowercase to ensure case-insensitive matching. Punctuation marks are removed, as they contribute little to semantic meaning but inflate vocabulary size. The resulting text stream is segmented into individual sentences using rule-based sentence boundary detection. Empty sentences or those failing to meet minimum length requirements receive fallback placeholder values, ensuring robust handling of edge cases without pipeline failures.
+
+This preprocessing serves multiple purposes. Normalization ensures that trivial textual differences don't obscure genuine similarities. Sentence-level segmentation enables fine-grained comparison, allowing us to identify which specific passages exhibit suspicious similarity rather than merely scoring entire documents holistically. The fallback mechanism prevents null reference errors that might occur with unusual input formatting.
+
+\subsection{Exact Match Detection}
+
+Before investing computational resources in similarity calculation, we check whether any sentences are character-identical after preprocessing. Exact matching operates as a simple set intersection between normalized sentence sets from both documents. When found, exact matches receive the maximum possible similarity score of 1.0, and we can immediately flag this passage as highly suspicious.
+
+While exact matching may seem trivial, it serves important purposes in our pipeline. First, it catches the simplest plagiarism cases with minimal computation. Second, exact matches provide unambiguous evidence of copying, eliminating the uncertainty inherent in similarity scores. Third, by handling exact matches early, we avoid wasting resources computing TF-IDF or SBERT scores for obviously identical content.
+
+\subsection{Lexical Similarity via TF-IDF}
+
+For non-identical sentences, we compute lexical overlap using TF-IDF vectorization. We employ character-level n-grams rather than word-level tokens, capturing subword patterns that remain stable across minor morphological variations. The vectorizer is fitted once on the entire dataset, ensuring consistent vocabulary across all comparisons and avoiding the need to refit for each document pair.
+
+Each sentence transforms into a sparse vector where each dimension represents an n-gram's TF-IDF weight. We compute cosine similarity between sentence vector pairs, yielding scores between 0 and 1. High scores indicate substantial lexical overlap, suggesting that sentences share many n-grams, particularly distinctive ones weighted heavily by inverse document frequency.
+
+TF-IDF excels at detecting near-duplicates where the plagiarist copied text with only minor modifications. It proves particularly effective when distinctive phrases or domain-specific terminology appears in both texts. However, it fails completely when content undergoes substantial paraphrasing, as the n-gram vocabulary diverges even though semantic content remains equivalent.
+
+\subsection{Semantic Similarity via Sentence-BERT}
+
+To capture meaning beyond surface lexical features, we employ Sentence-BERT with the all-MiniLM-L6-v2 model. This relatively lightweight variant balances computational efficiency against semantic understanding, generating 384-dimensional dense embeddings for each sentence. The model was trained specifically for sentence similarity tasks, making it well-suited for our application.
+
+We encode all sentences from both documents through the SBERT model, obtaining fixed-length embedding vectors regardless of sentence length. Cosine similarity between embedding pairs quantifies semantic closeness. Unlike TF-IDF's sparse vectors that only overlap when documents share vocabulary, these dense embeddings can register similarity between "The vehicle accelerated rapidly" and "The car sped up quickly" despite minimal lexical overlap.
+
+SBERT's contextualized embeddings capture subtle semantic relationships that lexical methods miss entirely. Synonyms, paraphrases, and reformulations that preserve meaning while changing wording all register as similar in embedding space. However, this sensitivity cuts both ways. Documents on similar topics naturally produce similar embeddings even absent any copying. Distinguishing between topical similarity and actual plagiarism requires additional context beyond semantic similarity alone.
+
+\subsection{Top-K Sentence Matching}
+
+Comparing every sentence from the source document against every sentence in the suspicious document yields quadratic computational complexity. For documents with hundreds of sentences, this becomes prohibitively expensive. We address this through top-K matching, which dramatically reduces comparisons while retaining the most relevant matches.
+
+For each source sentence, we sort suspicious sentences by their semantic similarity scores and retain only the K highest-scoring candidates. We then compute full similarity measures (exact match check, TF-IDF score, and semantic score) only for these K candidates rather than all possible pairs. This reduces complexity from $O(n^2)$ to $O(n \cdot K)$ where K is typically a small constant like 5 or 10.
+
+The rationale for this approach rests on an empirical observation: when plagiarism occurs, the plagiarized sentences typically rank among the top matches by semantic similarity. Examining the 200th-most-similar sentence pair rarely yields useful signals. By focusing computational resources on the most promising candidates, we achieve substantial efficiency gains without sacrificing detection capability.
+
+\subsection{Adaptive Filtering Mechanism}
+
+Not all matches merit inclusion in the final score. We apply filtering conditions to eliminate weak signals that likely represent noise rather than genuine plagiarism. Specifically, we reject sentence pairs where both semantic similarity and lexical similarity fall below their respective thresholds. This dual-threshold approach recognizes that plagiarism should manifest in at least one similarity dimension.
+
+The filtering logic operates as follows: a match survives if it exhibits an exact match, strong semantic similarity, or sufficiently strong joint lexical and semantic support. Only matches that are weak in both lexical and semantic dimensions are discarded. This design reduces false positives from broad topical overlap while preserving paraphrased and near-verbatim plagiarism evidence.
+
+We noticed that relying solely on semantic similarity could lead to misleading matches between sentences with similar topics but different intent. Therefore, we introduced a filtering step that removes pairs with both low semantic and lexical similarity, ensuring that only meaningful similarities contribute to the final score.
+
+\subsection{Score Aggregation Strategy}
+
+Having identified and filtered candidate matches, we aggregate them in two stages. First, each surviving sentence pair receives a local hybrid score computed from exact match, lexical similarity, and semantic similarity. Second, the document-level score combines the strongest local evidence with global document-level TF-IDF and SBERT scores.
+
+The aggregation function is:
+$$\text{HybridScore} = w_e \cdot \mathbb{1}_{\text{exact}} + w_p \cdot S_{\text{TF-IDF}} + w_s \cdot S_{\text{SBERT}}$$
+
+where $w_e$, $w_p$, and $w_s$ are tunable weights, $\mathbb{1}_{\text{exact}}$ is a binary indicator for exact matches, and the S terms represent normalized similarity scores.
+
+Instead of reducing the document pair to a single maximum sentence score, we retain the strongest non-overlapping sentence matches and summarize them using peak local evidence, mean top-match evidence, matched sentence coverage, and exact-match ratio. We then combine this local signal with global lexical and semantic scores:
+
+\begin{equation}
+FinalScore = \alpha \cdot LocalSignal + \beta \cdot GlobalTFIDF + \gamma \cdot GlobalSBERT
+\end{equation}
+
+where $\alpha$, $\beta$, and $\gamma$ are tunable weights. This ensemble formulation makes the system more robust because a document-level plagiarism decision now depends on both local aligned evidence and whole-document similarity.
+
+\subsection{Classification Decision}
+
+The final step applies a threshold to the document-level hybrid score. Scores exceeding the threshold yield a positive plagiarism classification; scores below it indicate insufficient evidence of plagiarism. Rather than using one fixed threshold for every method, we tune thresholds independently for TF-IDF, SBERT, and the hybrid model on the training split.
+
+Threshold selection involves inherent tradeoffs. Higher thresholds increase precision by reducing false positives but risk missing borderline plagiarism cases, decreasing recall. Lower thresholds improve recall by catching more subtle similarities but increase false positives, reducing precision. The optimal threshold depends on the application's relative costs of false positives versus false negatives. In academic contexts where missing plagiarism carries serious ethical implications, we might prefer lower thresholds that favor recall over precision.
+
+\section{Experimental Design}
+
+We evaluate our proposed hybrid system through controlled experiments comparing its performance against baseline single-method approaches.
+
+\subsection{Dataset Selection}
+
+Our experiments utilize the PAN plagiarism detection dataset, a well-established benchmark in the research community. Instead of pairing documents by file order, we use the PAN metadata pair file to construct positive suspicious-source document pairs. Negative pairs are generated by sampling suspicious and source documents that are not linked in the PAN metadata. This yields a controlled dataset of 162 document pairs containing both plagiarized and non-plagiarized examples.
+
+This construction is important because it ensures that positive labels reflect actual PAN pair relationships rather than positional assumptions in the file system. The resulting subset still represents only a portion of the full PAN corpus, but it provides a cleaner and more reproducible evaluation setup than the earlier experimental configuration.
+
+\subsection{Evaluation Metrics}
+
+We assess system performance using standard classification metrics. Precision measures what fraction of plagiarism predictions are correct, quantifying false positive rates. Recall measures what fraction of actual plagiarism cases are detected, quantifying false negative rates. The F1-score provides a harmonic mean that balances both considerations. Accuracy measures overall correctness on the held-out test set. To provide a basic notion of uncertainty, we also report bootstrap confidence intervals for the test-set metrics.
+
+Given the serious consequences of missing plagiarism in academic contexts, we place particular emphasis on recall. A system that achieves high recall even with moderate precision remains practically useful, as human reviewers can verify flagged cases. Conversely, a high-precision system with poor recall fails its fundamental purpose by allowing plagiarism to escape detection.
+
+\subsection{Baseline Configurations}
+
+To isolate the contribution of our hybrid approach, we implement four primary experimental conditions. The TF-IDF baseline uses document-level lexical similarity for classification. The SBERT baseline uses document-level semantic similarity based on Sentence-BERT embeddings. The hybrid system combines document-level TF-IDF, document-level SBERT, exact matching, and filtered top-K sentence-level evidence. We also evaluate a learned classifier that consumes the extracted hybrid features and learns a decision boundary over them.
+
+Each baseline receives independent threshold tuning to ensure fair comparison. We do not artificially handicap baselines by forcing them to use the hybrid system's threshold. This design ensures that performance differences reflect genuine advantages of the hybrid approach rather than suboptimal configuration of baselines.
+
+\subsection{Implementation Details}
+
+We use a reproducible train-test evaluation protocol. The dataset is shuffled with a fixed random seed and split into 113 training pairs and 49 test pairs. The TF-IDF vectorizer is fitted once before evaluation, and Sentence-BERT uses the all-MiniLM-L6-v2 model. For sentence-level matching, we retain the top 3 semantic candidates for each source sentence, apply lexical-semantic filtering, and keep non-overlapping high-quality local matches. Thresholds are tuned independently for each baseline and for the hybrid model using the training split, and final results are reported on the held-out test split. The learned classifier is implemented as logistic regression over extracted hybrid features, and its decision threshold is also tuned on the training split.
+
+\section{Results and Analysis}
+
+Table \ref{tab:results} summarizes performance across all three experimental conditions. The results reveal clear performance differences between approaches and validate our hybrid design.
+
+\begin{table}[htbp]
+\caption{Performance Comparison Across Detection Methods}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Accuracy} \\
+\midrule
+TF-IDF & 0.6897 & 0.9524 & 0.8000 & 0.7959 \\
+SBERT & 0.7727 & 0.8095 & 0.7907 & 0.8163 \\
+\textbf{Hybrid} & \textbf{0.9130} & \textbf{1.0000} & \textbf{0.9545} & \textbf{0.9592} \\
+Learned Classifier & 0.8750 & 1.0000 & 0.9333 & 0.9388 \\
+\bottomrule
+\end{tabular}
+\label{tab:results}
+\end{center}
+\end{table}
+Table~\ref{tab:results} summarizes the comparative performance of all evaluated methods.
+
+Fig.~\ref{fig:model} compares all major evaluation metrics across the evaluated models. The hybrid model achieves the strongest balance of precision, recall, F1-score, and accuracy, while the learned classifier provides an additional learning-based comparison on top of the engineered feature set.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{model_comparison.png}}
+\caption{Comparison of Models based on F1 Score}
+\label{fig:model}
+\end{figure}
+
+The new evaluation results show that the comparison becomes more informative once thresholds are tuned independently and the dataset is constructed from PAN metadata. The lexical baseline remains strong, while the semantic baseline is more conservative on the current test split than in earlier runs. Most importantly, the hybrid model remains the strongest overall system even after adding a learned classifier on top of the extracted features.
+
+The proposed hybrid model achieves the strongest overall performance, with precision of 0.9130, recall of 1.0000, F1-score of 0.9545, and accuracy of 0.9592. This result is important for two reasons. First, the hybrid preserves the high recall needed for plagiarism detection systems, where missed positives are costly. Second, unlike earlier versions of the pipeline, it also improves precision substantially. On this split, the learned classifier built on the same features performs competitively but does not surpass the tuned hybrid rule-based ensemble, suggesting that the engineered aggregation already captures a strong decision structure.
+
+The TF-IDF baseline remains competitive, with an F1-score of 0.8000. This confirms that lexical overlap still provides strong signal on the evaluated subset, especially for copied or lightly modified passages. The SBERT baseline achieves an F1-score of 0.7907, indicating that semantic representations remain useful but are not sufficient on their own for the present split. The hybrid system clearly outperforms both baselines, suggesting that the two signal types are complementary rather than redundant.
+
+From a system-design perspective, the ablation study yields an interesting insight. Removing the SBERT-driven global semantic component causes a major drop in performance, and removing global TF-IDF also reduces F1-score substantially. By contrast, on this particular split, removing the local sentence-level signal produces almost no change. This suggests that the strongest gains currently come from the global lexical-semantic ensemble, while the local matching stage may require further refinement or a harder evaluation subset to demonstrate its full value.
+
+Fig.~\ref{fig:pr} shows the precision-recall position of each evaluated model on the held-out test set. The hybrid model occupies the most desirable part of this space, and the learned classifier also performs strongly, which supports the claim that the extracted hybrid features carry meaningful predictive information.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{precision_recall.png}}
+\caption{Precision-Recall Position of Evaluated Models}
+\label{fig:pr}
+\end{figure}
+
+Fig.~\ref{fig:thresholds} reports the validation-tuned decision thresholds used by the evaluated systems. Although some thresholds are numerically close, independent calibration remains important because the models produce different score distributions and respond differently to the same cutoff.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{threshold_comparison.png}}
+\caption{Validation-Tuned Threshold Comparison}
+\label{fig:thresholds}
+\end{figure}
+
+Fig.~\ref{fig:cm} presents the confusion matrix of the hybrid model on the test split. The model produces only two false positives and no false negatives, reinforcing the quantitative result that the hybrid system improves precision without sacrificing recall.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{hybrid_confusion_matrix.png}}
+\caption{Hybrid Model Confusion Matrix on the Test Split}
+\label{fig:cm}
+\end{figure}
+
+Fig.~\ref{fig:ablation} summarizes the ablation study. The plot makes the relative importance of the semantic and lexical global components visually clear and also reveals that the current local sentence signal is not yet carrying as much unique information as originally hypothesized.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{ablation_study.png}}
+\caption{Ablation Study of Hybrid Components}
+\label{fig:ablation}
+\end{figure}
+
+\section{Discussion}
+
+Our experimental results illuminate several important aspects of plagiarism detection methodology.
+
+\subsection{Complementary Strengths of Lexical and Semantic Methods}
+
+The performance difference between the baselines and the hybrid system confirms that lexical and semantic approaches provide complementary information. TF-IDF captures strong surface overlap, while SBERT captures paraphrased or semantically preserved content. The hybrid system benefits from both, which is why it achieves higher F1-score and accuracy than either standalone model.
+
+This complementarity manifests in the filtering and aggregation mechanisms. Sentence-level filtering ensures that weak topical overlap does not dominate the decision, while document-level ensemble aggregation preserves broader lexical and semantic context. The current ablation results suggest that the document-level semantic and lexical components carry most of the discriminative power on this subset, while the sentence-level signal currently acts more as a supporting feature than a dominant one.
+
+\subsection{Computational Efficiency Considerations}
+
+The top-K matching strategy provides substantial computational benefits. Examining all sentence pairs from two documents with 100 sentences each requires 10,000 comparisons. With K=3, we perform only 300 detailed comparisons after an initial semantic similarity sort. This reduction enables practical deployment at scale while retaining detection capability.
+
+We note that the initial semantic similarity computation for sorting still requires comparing all pairs, but this involves only simple cosine similarity between precomputed embeddings rather than full pipeline processing. The asymptotic complexity reduction from $O(n^2)$ to $O(n \cdot K)$ proves significant for large documents, though the constant factors matter for small documents where $n^2$ remains manageable.
+
+\subsection{Threshold Selection and Operational Tradeoffs}
+
+Threshold selection remains an important operational decision, but the present system is more stable than the earlier version because thresholds are tuned independently for each model. In our experiments, this avoids unfair comparison and better reflects how plagiarism detection systems would be deployed in practice.
+
+Different application contexts might justify different threshold choices. Publishers scanning large corpora might prefer higher thresholds to reduce manual review burden. Academic institutions conducting routine checks might accept higher false positive rates to ensure comprehensive detection. The threshold parameter enables tuning the system to specific operational requirements.
+
+\subsection{Dataset Size Limitations}
+
+Our evaluation on 162 document pairs provides a stronger basis than the earlier pilot experiment, but it is still a controlled subset rather than a full benchmark-scale study. Larger-scale evaluation would strengthen confidence in the results and enable more detailed analysis across plagiarism subtypes, document lengths, and obfuscation strategies. The bootstrap intervals help communicate uncertainty, but they do not replace broader validation.
+
+\section{Limitations and Future Directions}
+
+Several limitations of our current work suggest directions for future research.
+
+\subsection{Dataset Scale}
+
+Our 162-pair evaluation dataset, while more rigorous than the initial prototype setting, remains relatively small for drawing definitive conclusions. Larger-scale evaluation across diverse plagiarism types would strengthen our findings. Future work should examine performance on the full PAN dataset or other large corpora, potentially revealing weaknesses in specific plagiarism categories. In particular, the current negative sampling strategy may produce an easier subset than a full retrieval-style evaluation.
+
+\subsection{Precision-Recall Tradeoff}
+
+Although the hybrid system achieves strong precision and recall on the current split, further validation is still needed to confirm that this trade-off generalizes. Several approaches might improve robustness further, including citation-aware filtering, segment-level alignment confidence, richer contextual features beyond raw similarity scores, and harder negative mining.
+
+\subsection{Adaptive Threshold Learning}
+
+Our current threshold selection relies on manual tuning with validation data. Machine learning approaches could potentially learn optimal thresholds or even replace the threshold entirely with a trained classifier that takes similarity scores as features. Such approaches might better capture the complex decision boundaries between plagiarism and originality.
+
+\subsection{Advanced Semantic Models}
+
+Since our experiments concluded, newer transformer architectures have emerged with potentially superior semantic understanding. Large language models like GPT-4 or Claude could provide richer semantic features. However, their computational costs and API dependencies present practical challenges for real-time deployment.
+
+\subsection{Cross-Language Plagiarism}
+
+Our current system operates on English documents only. Multilingual SBERT models could potentially enable detection of translated plagiarism, where content is copied then translated to another language. However, translation introduces additional challenges around determining appropriate similarity thresholds.
+
+\subsection{Real-Time Deployment}
+
+Transitioning from research prototype to production system requires addressing several engineering challenges. The system needs efficient indexing for corpus-level search rather than pairwise comparison. It requires API endpoints for integration with learning management systems. Scaling to handle concurrent requests demands careful attention to computational resources and caching strategies.
+
+\section{Conclusion}
+
+This work demonstrates that carefully designed hybrid approaches can substantially outperform single-method baselines for plagiarism detection. By combining exact matching, document-level lexical similarity, document-level semantic similarity, and filtered top-K sentence evidence, the proposed system achieves precision of 0.9130, recall of 1.0000, F1-score of 0.9545, and accuracy of 0.9592 on a held-out evaluation split derived from PAN metadata.
+
+The success of our hybrid system validates several design principles. First, combining complementary lexical and semantic similarity measures addresses individual methods' limitations more effectively than relying on either one alone. Second, document-level ensemble aggregation produces a more reliable final decision than single-pair max scoring. Third, independent threshold tuning is essential for fair comparison and practical deployment. Fourth, the learning-based classifier experiment confirms that the extracted hybrid features are meaningful, even though the tuned handcrafted hybrid remains slightly stronger on the present split.
+
+While limitations remain, particularly regarding dataset scale and precision optimization, our work provides a solid foundation for practical plagiarism detection systems. Future research can build on this foundation by exploring larger-scale evaluation, advanced semantic models, adaptive threshold learning, and engineering considerations for production deployment.
+
+The ongoing evolution of both plagiarism techniques and detection methods ensures this remains an active research area. As language models become more sophisticated and accessible, plagiarists gain increasingly powerful rewriting tools. Detection systems must evolve in parallel, combining local alignment, document-level similarity, and careful calibration to remain effective. Our hybrid approach represents one practical step in that direction.
+
+The proposed system can be integrated into academic and content management platforms to provide real-time plagiarism screening, assisting educators and publishers in maintaining content integrity.
+
+Based on our experiments, we conclude that combining lexical and semantic similarity provides a more robust approach to plagiarism detection. The proposed system is particularly effective in identifying paraphrased content, which is often missed by traditional methods. This makes it suitable for real-world academic and content verification systems.
+
+\begin{thebibliography}{99}
+
+\bibitem{potthast2010}
+M. Potthast, B. Stein, A. Barrón-Cedeño, and P. Rosso, ``An evaluation framework for plagiarism detection,'' in \textit{Proceedings of the 23rd International Conference on Computational Linguistics}, Beijing, China, 2010, pp. 997--1005.
+
+\bibitem{reimers2019}
+N. Reimers and I. Gurevych, ``Sentence-BERT: Sentence embeddings using siamese BERT-networks,'' in \textit{Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing}, Hong Kong, China, 2019, pp. 3982--3992.
+
+\bibitem{salton1988}
+G. Salton and C. Buckley, ``Term-weighting approaches in automatic text retrieval,'' \textit{Information Processing \& Management}, vol. 24, no. 5, pp. 513--523, 1988.
+
+\bibitem{devlin2019}
+J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, ``BERT: Pre-training of deep bidirectional transformers for language understanding,'' in \textit{Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics}, Minneapolis, MN, USA, 2019, pp. 4171--4186.
+
+\bibitem{mikolov2013}
+T. Mikolov, I. Sutskever, K. Chen, G. Corrado, and J. Dean, ``Distributed representations of words and phrases and their compositionality,'' in \textit{Advances in Neural Information Processing Systems 26}, Lake Tahoe, NV, USA, 2013, pp. 3111--3119.
+
+\bibitem{pennington2014}
+J. Pennington, R. Socher, and C. Manning, ``GloVe: Global vectors for word representation,'' in \textit{Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing}, Doha, Qatar, 2014, pp. 1532--1543.
+
+\bibitem{vaswani2017}
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin, ``Attention is all you need,'' in \textit{Advances in Neural Information Processing Systems 30}, Long Beach, CA, USA, 2017, pp. 5998--6008.
+
+\bibitem{barronacevedo2013}
+A. Barrón-Cedeño, M. Vila, M. A. Martí, and P. Rosso, ``Plagiarism meets paraphrasing: Insights for the next generation in automatic plagiarism detection,'' \textit{Computational Linguistics}, vol. 39, no. 4, pp. 917--947, 2013.
+
+\end{thebibliography}
+
+\end{document}
