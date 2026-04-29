@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hybrid Plagiarism Detection Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600;700&family=Manrope:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+
+<body>
+  <div class="background-pattern" aria-hidden="true"></div>
+  <main class="page-shell">
+    <section class="hero">
+      <div class="hero-copy-block reveal-up">
+        <p class="eyebrow">Research demo • Hybrid NLP model</p>
+        <h1>Plagiarism Report Generator</h1>
+        <p class="hero-copy">
+          Paste submitted content with a source/reference passage and generate a
+          detailed plagiarism report using the final hybrid pipeline.
+        </p>
+        <div class="hero-actions">
+          <a href="#analysis-form" class="primary-link">Start checking</a>
+          <span>Final hybrid F1: 0.9302</span>
+        </div>
+      </div>
+      <div class="hero-stats reveal-up delay-1" aria-label="Final model metrics">
+        <div>
+          <span>Hybrid F1</span>
+          <strong>0.9302</strong>
+        </div>
+        <div>
+          <span>Precision</span>
+          <strong>0.9091</strong>
+        </div>
+        <div>
+          <span>Recall</span>
+          <strong>0.9524</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="process-strip reveal-up delay-2" aria-label="Report workflow">
+      <article>
+        <span>01</span>
+        <strong>Paste Text</strong>
+        <p>Submitted content and suspected source are entered together.</p>
+      </article>
+      <article>
+        <span>02</span>
+        <strong>Hybrid Analysis</strong>
+        <p>TF-IDF, SBERT, exact match, and sentence evidence are combined.</p>
+      </article>
+      <article>
+        <span>03</span>
+        <strong>Readable Report</strong>
+        <p>The model result is translated into risk, evidence, and matches.</p>
+      </article>
+    </section>
+
+    <section class="workspace reveal-up delay-3">
+      <form id="analysis-form" class="input-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Input texts</p>
+            <h2>Check submitted content</h2>
+          </div>
+          <div class="sample-controls">
+            <select id="sample-select" aria-label="Choose sample case">
+              <option value="">Choose a sample case</option>
+            </select>
+            <button class="ghost-button" type="button" id="load-sample">Load sample</button>
+          </div>
+        </div>
+
+        <div class="text-grid">
+          <label class="text-card">
+            <span>Submitted Text</span>
+            <textarea id="suspicious-text" required placeholder="Paste the content you want to check..."></textarea>
+          </label>
+          <label class="text-card">
+            <span>Reference / Source Text</span>
+            <textarea id="source-text" required
+              placeholder="Paste the suspected source or reference content here..."></textarea>
+          </label>
+        </div>
+
+        <div class="actions">
+          <button class="primary-button" type="submit">
+            <span class="button-label">Generate Plagiarism Report</span>
+            <span class="button-loader" aria-hidden="true"></span>
+          </button>
+          <p id="status-message" role="status"></p>
+        </div>
+      </form>
+
+      <section id="report-panel" class="report-panel is-empty" aria-live="polite">
+        <div class="empty-state">
+          <p class="eyebrow">Waiting for analysis</p>
+          <h2>Your report will appear here</h2>
+          <p>Paste submitted content and a reference passage to see the verdict, similarity evidence, and sentence-level
+            matches.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <template id="report-template">
+    <div class="report-header">
+      <div>
+        <p class="eyebrow">Hybrid decision</p>
+        <h2 data-field="verdict"></h2>
+        <p data-field="decision_note"></p>
+      </div>
+      <div class="score-ring">
+        <span data-field="hybrid_percent"></span>
+        <small>Hybrid score</small>
+      </div>
+    </div>
+
+    <div class="risk-bar" aria-label="Risk scale">
+      <span>Low</span>
+      <div class="risk-track"><i data-field="risk_marker"></i></div>
+      <span>High</span>
+    </div>
+
+    <div class="score-grid report-score-grid">
+      <article class="metric-card">
+        <span>Final risk score</span>
+        <strong data-field="hybrid_score"></strong>
+        <small data-field="hybrid_prediction"></small>
+      </article>
+      <article class="metric-card">
+        <span>Text overlap</span>
+        <strong data-field="tfidf_score"></strong>
+        <small>Lexical evidence</small>
+      </article>
+      <article class="metric-card">
+        <span>Meaning similarity</span>
+        <strong data-field="sbert_score"></strong>
+        <small>Semantic evidence</small>
+      </article>
+      <article class="metric-card highlight">
+        <span>Matched coverage</span>
+        <strong data-field="coverage_score"></strong>
+        <small>Supported sentences</small>
+      </article>
+    </div>
+
+    <div class="feature-layout">
+      <section class="feature-card">
+        <h3>Detailed Evidence</h3>
+        <dl id="feature-list"></dl>
+      </section>
+      <section class="feature-card">
+        <h3>Report Summary</h3>
+        <dl id="summary-list"></dl>
+      </section>
+    </div>
+
+    <section class="matches-card">
+      <div class="section-title">
+        <h3>Top Sentence Matches</h3>
+        <p>Highest scoring sentence pairs found by the model.</p>
+      </div>
+      <div id="matches-list"></div>
+    </section>
+  </template>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+
+</html>
