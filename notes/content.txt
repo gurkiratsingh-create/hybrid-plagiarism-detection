@@ -1,0 +1,165 @@
+Slide 1: Title Slide
+
+Project Title: A Hybrid Multi-Stage Plagiarism Detection Framework Combining Lexical and Semantic Similarity
+Submitted in partial fulfillment for the award of the degree of Bachelor of Engineering
+Branch: Computer Science and Engineering
+Submitted by: Gurkirat Singh Bhangoo, Sparsh Tyagi, Ashmit Saini, Litesh Goyal
+Under the supervision of: Ms. Ankita Thakur
+Department: AIT-CSE, Chandigarh University
+Slide 2: Outline
+
+Introduction to Project
+Problem Formulation
+Objectives of the Work
+Methodology Used
+Results and Outputs
+Conclusion
+Future Scope
+References
+Slide 3: Introduction to Project
+
+Plagiarism detection is important in academic and digital environments.
+Traditional systems work well for exact copying but struggle with paraphrased plagiarism.
+Modern rewriting tools can preserve meaning while changing surface wording.
+Because of this, plagiarism detection now needs both lexical and semantic understanding.
+Slide 4: Introduction to Project
+
+This project uses a hybrid approach combining:
+Exact matching
+TF-IDF for lexical similarity
+SBERT for semantic similarity
+The goal was to detect both copied text and paraphrased plagiarism.
+The system was built as a full Python pipeline and evaluated on a PAN dataset subset.
+Slide 5: Introduction to Project
+
+The project evolved from a research prototype to a stronger ML-engineering style system.
+Key additions over time:
+Better document-pair construction using PAN metadata
+Improved aggregation logic
+Threshold tuning for each model
+Reproducible experiments
+Learned classifier, ablation study, and confidence intervals
+Slide 6: Problem Formulation
+
+Lexical methods like TF-IDF are precise for copied text but weak for paraphrasing.
+Semantic methods like SBERT understand meaning better but may create false positives.
+Early hybrid prototype had high recall but low precision.
+Main problem: improve precision without losing recall.
+Also needed: publishable evaluation, reviewer-ready analysis, and industry-level presentation.
+Slide 7: Objectives of the Work
+
+Build a complete plagiarism detection pipeline using exact, lexical, and semantic similarity.
+Detect exact copying and paraphrased plagiarism in document pairs.
+Improve precision while keeping recall high.
+Make the system reproducible and research-ready.
+Prepare the project for publication, placements, and technical interviews.
+Slide 8: Methodology Used
+
+Input documents are preprocessed and split into sentences.
+Exact sentence matches are checked first.
+Whole-document TF-IDF similarity is computed.
+Whole-document SBERT similarity is computed.
+Sentence-level semantic matching is then performed for local evidence.
+Slide 9: Methodology Used
+
+Top-K matching is used to keep only the best candidate sentence pairs.
+Weak matches are removed using lexical-semantic filtering.
+Local sentence evidence is combined with:
+Global TF-IDF score
+Global SBERT score
+Final hybrid score is passed through a tuned threshold for classification.
+Slide 10: Methodology Used
+
+Evaluation workflow:
+PAN metadata used for positive suspicious-source pairs
+Negative pairs sampled from non-linked suspicious-source combinations
+Total dataset size: 162 pairs
+Train size: 113
+Test size: 49
+Metrics used: Precision, Recall, F1-score, Accuracy
+Additional analysis: bootstrap confidence intervals, learned classifier, ablation study
+Slide 11: Results and Outputs
+
+Initial project-stage hybrid results:
+Precision: ~0.55
+Recall: ~0.96
+F1-score: ~0.69
+Accuracy: ~0.58
+Interpretation:
+System was catching many positives
+But too many false positives reduced precision
+Slide 12: Results and Outputs
+
+After improving the pipeline and evaluation:
+TF-IDF:
+Precision: 0.6897
+Recall: 0.9524
+F1-score: 0.8000
+Accuracy: 0.7959
+SBERT:
+Precision: 0.7619
+Recall: 0.7619
+F1-score: 0.7619
+Accuracy: 0.7959
+Slide 13: Results and Outputs
+
+Final Hybrid Model:
+Precision: 0.9091
+Recall: 0.9524
+F1-score: 0.9302
+Accuracy: 0.9388
+Learned Classifier:
+Precision: 0.9048
+Recall: 0.9048
+F1-score: 0.9048
+Accuracy: 0.9184
+Hybrid model gave the best overall balance.
+Slide 14: Results and Outputs
+
+Ablation Study:
+Full Hybrid: 0.9302
+Minus Local Signal: 0.9302
+Minus Global TF-IDF: 0.8182
+Minus Global SBERT: 0.8235
+Local Only: 0.6000
+Insight:
+Global lexical and semantic signals contributed most on this split.
+Local sentence matching helped structurally, but contributed less to final F1 here.
+Slide 15: Results and Outputs
+
+Major improvements made during the project:
+Replaced weak dataset pairing with PAN metadata-based pairing
+Redesigned aggregation from single best sentence to document-level ensemble
+Tuned thresholds separately for TF-IDF, SBERT, and Hybrid
+Added bootstrap confidence intervals
+Added learning-based classifier
+Added ablation study
+Updated paper, README, graphs, and final report
+Slide 16: Conclusion
+
+A hybrid plagiarism detection system was successfully developed.
+The final system combines exact matching, TF-IDF, SBERT, top-K sentence matching, filtering, and ensemble aggregation.
+The project improved from a prototype with low precision to a much stronger final model.
+Final hybrid performance was:
+Precision: 0.9091
+Recall: 0.9524
+F1-score: 0.9302
+Accuracy: 0.9388
+The project is now stronger for research, publication, and interviews.
+Slide 17: Future Scope
+
+Evaluate on larger PAN subsets or full benchmark settings.
+Use harder negatives from realistic retrieval systems.
+Extend to multilingual plagiarism detection.
+Add explanation outputs showing matched suspicious sentences.
+Explore stronger learned models over hybrid features.
+Deploy as a Flask/API or web-based demo system.
+Slide 18: References
+
+Potthast et al., evaluation framework for plagiarism detection
+Barron-Cedeno et al., plagiarism and paraphrasing
+Reimers and Gurevych, Sentence-BERT
+Devlin et al., BERT
+Arabi and Akbari, hybrid weighted similarity for plagiarism detection
+PAN 2025 overview paper
+Recent comparative plagiarism detection studies
